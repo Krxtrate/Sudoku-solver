@@ -648,37 +648,45 @@ btnCropConfirm.addEventListener('click', async () => {
                     sum += cellData.data[i];
                 }
                 const mean = sum / (CS * CS);
-                const threshold = Math.max(20, Math.min(235, mean * 0.88));
 
                 const binCanvas = document.createElement('canvas');
-                binCanvas.width = CS; binCanvas.height = CS;
+                binCanvas.width = CS;
+                binCanvas.height = CS;
+
                 const bCtx = binCanvas.getContext('2d');
                 const binData = bCtx.createImageData(CS, CS);
+
                 let darkCount = 0;
 
-                for (let i = 0; i < cellData.data.length; i += 4) {
-                    const lum = cellData.data[i];
-                    let v;
+                for (let y = 0; y < CS; y++) {
+                    for (let x = 0; x < CS; x++) {
 
-                    if (lum < threshold * 0.75) {
-                        v = 0;
-                    } else {
-                        v = 255;
+                        const idx = (y * CS + x) * 4;
+
+                        const lum = cellData.data[idx];
+
+                        const localThreshold = mean * 0.9;
+
+                        let v = lum < localThreshold ? 0 : 255;
+
+                        // ignore borders/gridlines
+                        if (
+                            x < 5 || x > CS - 6 ||
+                            y < 5 || y > CS - 6
+                        ) {
+                            v = 255;
+                        }
+
+                        if (v === 0) darkCount++;
+
+                        binData.data[idx] =
+                        binData.data[idx + 1] =
+                        binData.data[idx + 2] = v;
+
+                        binData.data[idx + 3] = 255;
                     }
-
-                    if (v === 0) darkCount++;
-
-                    binData.data[i] =
-                    binData.data[i + 1] =
-                    binData.data[i + 2] = v;
-
-                    binData.data[i + 3] = 255;
                 }
-
                 const darkRatio = darkCount / (CS * CS);
-                if (darkRatio > 0.35) {
-                    continue;
-                }      
                 if (darkRatio > 0.5) {
                     for (let i = 0; i < binData.data.length; i += 4) {
                         const inv = 255 - binData.data[i];
