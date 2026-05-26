@@ -672,8 +672,8 @@ btnCropConfirm.addEventListener('click', async () => {
 
                         // ignore borders/gridlines
                         if (
-                            x < 10 || x > CS - 11 ||
-                            y < 10 || y > CS - 11
+                            x < 5 || x > CS - 6 ||
+                            y < 5 || y > CS - 6
                         ) {
                             v = 255;
                         }
