@@ -573,8 +573,7 @@ const DigitClassifier = (function () {
             for (let i = 0; i < fv.length; i++) dist += (fv[i] - ref[i]) ** 2;
             if (dist < bestDist) { bestDist = dist; best = d; }
         }
-        if (bestDist > 1.2) return null;
-
+        
         return best !== null ? String(best) : null;
     }
 
