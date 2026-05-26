@@ -565,7 +565,7 @@ const DigitClassifier = (function () {
         const fv = featureVec(norm);
         // Reject clearly empty cells
         const avgInk = fv.reduce((s, v) => s + v, 0) / fv.length;
-        if (avgInk < 0.03) return null;
+        if (avgInk < 0.01) return null;
         let best = null, bestDist = Infinity;
         for (let d = 1; d <= 9; d++) {
             let dist = 0;
@@ -573,6 +573,8 @@ const DigitClassifier = (function () {
             for (let i = 0; i < fv.length; i++) dist += (fv[i] - ref[i]) ** 2;
             if (dist < bestDist) { bestDist = dist; best = d; }
         }
+        if (bestDist > 0.65) return null;
+
         return best !== null ? String(best) : null;
     }
 
@@ -702,7 +704,7 @@ btnCropConfirm.addEventListener('click', async () => {
                 const sCtx = scaled.getContext('2d');
                 sCtx.fillStyle = '#ffffff';
                 sCtx.fillRect(0, 0, 80, 80);
-                sCtx.drawImage(binCanvas, 12, 12, 26, 26, 0, 0, 80, 80);
+                sCtx.drawImage(binCanvas, 10, 10, 30, 30, 0, 0, 80, 80);
                 const img = sCtx.getImageData(0, 0, 80, 80);
                 const d = img.data;
 
