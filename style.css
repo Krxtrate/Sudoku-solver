@@ -1,25 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --bg-primary: #f4ecd8;
-    --bg-secondary: #dbc7a3;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
 
-    --glass-bg: rgba(245, 235, 220, 0.08);
-    --glass-border: rgba(222, 184, 135, 0.12);
-    --glass-shadow: rgba(0, 0, 0, 0.45);
+    --glass-bg: rgba(245, 238, 220, 0.92);
+    --glass-border: rgba(120, 98, 72, 0.18);
+    --glass-shadow: rgba(15, 23, 42, 0.18);
 
-    --accent-cyan: #d2b48c;
-    --accent-blue: #c2a878;
-    --accent-purple: #8b6f47;
-    --accent-pink: #9c6644;
-    --accent-green: #b08968;
+    --accent-cyan: #c8a97e;
+    --accent-blue: #8b7355;
+    --accent-purple: #5b4636;
+    --accent-pink: #a67c52;
+    --accent-green: #7a5c3e;
 
-    --text-primary: #f5e6d3;
-    --text-secondary: #d6c2a8;
-    --text-muted: #9f8b73;
+    --text-primary: #1e293b;
+    --text-secondary: #5b4636;
+    --text-muted: #8b7355;
 
-    --cell-border: rgba(245, 230, 211, 0.06);
-    --block-border: rgba(210, 180, 140, 0.25);
+    --cell-border: rgba(30, 41, 59, 0.08);
+    --block-border: rgba(91, 70, 54, 0.35);
 
     --font-sans: 'Times New Roman', serif;
     --font-mono: 'Times New Roman', serif;
@@ -34,19 +34,12 @@
 }
 
 body {
-    background-color: var(--bg-primary);
-    background-image: 
-        radial-gradient(at 10% 15%, rgba(127, 0, 255, 0.12) 0px, transparent 45%),
-        radial-gradient(at 90% 85%, rgba(0, 242, 254, 0.12) 0px, transparent 45%);
-    background-attachment: fixed;
-    color: var(--text-primary);
-    font-family: var(--font-sans);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    overflow-x: hidden;
-    line-height: 1.5;
+    background: linear-gradient(
+        135deg,
+        #0f172a 0%,
+        #1e293b 35%,
+        #d6c2a8 100%
+    );
 }
 
 header {
