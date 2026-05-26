@@ -120,7 +120,7 @@ header {
 }
 
 .glass-panel {
-    background: var(--glass-bg);
+    background: rgba(235, 224, 204, 0.96);
     border: 1px solid var(--glass-border);
     border-radius: 16px;
     box-shadow: 0 8px 32px var(--glass-shadow);
@@ -146,7 +146,7 @@ header {
     padding: 8px;
     background: rgba(0, 0, 0, 0.5);
     border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(235, 224, 204, 0.96);
     box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 10px 40px rgba(0, 0, 0, 0.6);
 }
 
@@ -178,8 +178,6 @@ header {
     border: none;
     outline: none;
     text-align: center;
-    color: var(--text-primary);
-    font-family: var(--font-sans);
     font-size: 1.75rem;
     font-weight: 600;
     caret-color: var(--accent-cyan);
@@ -277,7 +275,7 @@ header {
 }
 
 .upload-icon {
-    color: var(--text-secondary);
+    color: #6b4f3a;
     margin-bottom: 1rem;
     transition: var(--transition-smooth);
 }
@@ -290,14 +288,13 @@ header {
 .upload-text {
     font-size: 0.9rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #2b2118;
     margin-bottom: 0.25rem;
 }
 
 .upload-hint {
     font-size: 0.75rem;
-    color: var(--text-secondary);
-}
+    color: #6b4f3a;}
 
 /* Sidebar Utilities */
 .sidebar {
@@ -315,8 +312,8 @@ header {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    color: var(--text-primary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #2b2118;   
+    border-bottom: 1px solid rgba(235, 224, 204, 0.96);
     padding-bottom: 0.5rem;
 }
 
@@ -367,8 +364,7 @@ header {
 .btn-secondary {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--glass-border);
-    color: var(--text-primary);
-}
+    color: #2b2118;}
 
 .btn-secondary:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.08);
@@ -420,8 +416,7 @@ header {
     border-radius: 12px;
     padding: 1rem;
     font-size: 0.8rem;
-    color: var(--text-secondary);
-}
+    color: #6b4f3a;}
 
 .info-banner svg {
     flex-shrink: 0;
@@ -451,7 +446,7 @@ header {
     font-family: var(--font-mono);
     font-size: 1.1rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #2b2118;
     cursor: pointer;
     transition: var(--transition-smooth);
     user-select: none;
@@ -549,7 +544,7 @@ footer a:hover {
 
 .modal-header {
     padding: 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(235, 224, 204, 0.96);
 }
 
 .modal-header h3 {
@@ -562,7 +557,7 @@ footer a:hover {
 
 .modal-header p {
     font-size: 0.8rem;
-    color: var(--text-secondary);
+    color: #6b4f3a;   
     margin-top: 0.25rem;
 }
 
@@ -653,7 +648,7 @@ footer a:hover {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(235, 224, 204, 0.96);
 }
 
 /* -------------------------------------------------------------
@@ -675,7 +670,7 @@ footer a:hover {
 .spinner {
     width: 50px;
     height: 50px;
-    border: 3px solid rgba(255, 255, 255, 0.05);
+    border: 3px solid rgba(235, 224, 204, 0.96);
     border-radius: 50%;
     border-top-color: var(--accent-cyan);
     border-left-color: var(--accent-blue);
