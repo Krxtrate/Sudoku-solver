@@ -502,6 +502,15 @@ const DigitClassifier = (function () {
         return out;
     }
 
+    function pixelVector(c) {
+        const d = c.getContext('2d').getImageData(0, 0, NORM, NORM).data;
+        const pixels = new Float32Array(NORM * NORM);
+        for (let i = 0; i < NORM * NORM; i++) {
+            pixels[i] = d[i * 4] < 128 ? 1 : 0;
+        }
+        return pixels;
+    }
+
     // Compute zone-density feature vector (ZR×ZC = 20 values, each 0-1)
     function featureVec(c) {
         const d = c.getContext('2d').getImageData(0, 0, NORM, NORM).data;
@@ -549,35 +558,65 @@ const DigitClassifier = (function () {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(String(digit), SIZE / 2, SIZE / 2);
-            return featureVec(normalize(c));
+            const norm = normalize(c);
+            return {
+                fv: featureVec(norm),
+                pixels: pixelVector(norm),
+            };
         });
-        // Average all per-font feature vectors into one prototype
-        return all[0].map((_, i) => all.reduce((s, f) => s + f[i], 0) / all.length);
+
+        const avgFeature = all[0].fv.map((_, i) => all.reduce((s, item) => s + item.fv[i], 0) / all.length);
+        return {
+            feature: avgFeature,
+            templates: all.map(item => item.pixels),
+        };
     }
 
     // Pre-build prototypes for digits 1-9 at module init
     const PROTOS = {};
     for (let d = 1; d <= 9; d++) PROTOS[d] = buildProto(d);
 
-    // Classify a cell canvas → '1'-'9' or null if empty/unrecognisable
-    function classify(cellCanvas) {
+    // Classify a cell canvas with distance scoring.
+    function classifyWithScore(cellCanvas) {
         const norm = normalize(cellCanvas);
         const fv = featureVec(norm);
-        // Reject clearly empty cells
+        const pixels = pixelVector(norm);
         const avgInk = fv.reduce((s, v) => s + v, 0) / fv.length;
-        if (avgInk < 0.01) return null;
         let best = null, bestDist = Infinity;
         for (let d = 1; d <= 9; d++) {
-            let dist = 0;
             const ref = PROTOS[d];
-            for (let i = 0; i < fv.length; i++) dist += (fv[i] - ref[i]) ** 2;
-            if (dist < bestDist) { bestDist = dist; best = d; }
+            let zoneDist = 0;
+            for (let i = 0; i < fv.length; i++) zoneDist += (fv[i] - ref.feature[i]) ** 2;
+            let pixelDist = Infinity;
+            for (const tmpl of ref.templates) {
+                let pd = 0;
+                for (let i = 0; i < pixels.length; i++) {
+                    const diff = pixels[i] - tmpl[i];
+                    pd += diff * diff;
+                }
+                if (pd < pixelDist) pixelDist = pd;
+            }
+            pixelDist /= (NORM * NORM);
+            const dist = 0.65 * pixelDist + 0.35 * zoneDist;
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = d;
+            }
         }
-        
-        return best !== null ? String(best) : null;
+
+        return {
+            digit: best !== null ? String(best) : null,
+            distance: bestDist,
+            avgInk,
+        };
     }
 
-    return { classify };
+    function classify(cellCanvas) {
+        const result = classifyWithScore(cellCanvas);
+        return result.avgInk < 0.01 ? null : result.digit;
+    }
+
+    return { classify, classifyWithScore };
 })();
 
 // -------------------------------------------------------------
@@ -644,51 +683,63 @@ btnCropConfirm.addEventListener('click', async () => {
                 cCtx.drawImage(cropCanvas, c * CS, r * CS, CS, CS, 0, 0, CS, CS);
 
                 const cellData = cCtx.getImageData(0, 0, CS, CS);
-                let sum = 0;
-                for (let i = 0; i < cellData.data.length; i += 4) {
-                    sum += cellData.data[i];
+                const grayValues = [];
+                for (let y = 5; y < CS - 5; y++) {
+                    for (let x = 5; x < CS - 5; x++) {
+                        const idx = (y * CS + x) * 4;
+                        grayValues.push(cellData.data[idx]);
+                    }
                 }
-                const mean = sum / (CS * CS);
+
+                const threshold = (() => {
+                    const hist = new Array(256).fill(0);
+                    grayValues.forEach(v => hist[Math.min(255, Math.max(0, Math.round(v)))]++);
+                    const total = grayValues.length;
+                    let sum = 0;
+                    for (let i = 0; i < 256; i++) sum += i * hist[i];
+                    let sumB = 0;
+                    let wB = 0;
+                    let maxVar = 0;
+                    let thresh = 127;
+                    for (let i = 0; i < 256; i++) {
+                        wB += hist[i];
+                        if (wB === 0) continue;
+                        const wF = total - wB;
+                        if (wF === 0) break;
+                        sumB += i * hist[i];
+                        const mB = sumB / wB;
+                        const mF = (sum - sumB) / wF;
+                        const varBetween = wB * wF * (mB - mF) * (mB - mF);
+                        if (varBetween > maxVar) {
+                            maxVar = varBetween;
+                            thresh = i;
+                        }
+                    }
+                    return thresh;
+                })();
 
                 const binCanvas = document.createElement('canvas');
                 binCanvas.width = CS;
                 binCanvas.height = CS;
-
                 const bCtx = binCanvas.getContext('2d');
                 const binData = bCtx.createImageData(CS, CS);
-
                 let darkCount = 0;
 
                 for (let y = 0; y < CS; y++) {
                     for (let x = 0; x < CS; x++) {
-
                         const idx = (y * CS + x) * 4;
-
                         const lum = cellData.data[idx];
-
-                        const localThreshold = mean * 0.9;
-
-                        let v = lum < localThreshold ? 0 : 255;
-
-                        // ignore borders/gridlines
-                        if (
-                            x < 5 || x > CS - 6 ||
-                            y < 5 || y > CS - 6
-                        ) {
+                        let v = lum < threshold ? 0 : 255;
+                        if (x < 8 || x > CS - 9 || y < 8 || y > CS - 9) {
                             v = 255;
                         }
-
                         if (v === 0) darkCount++;
-
-                        binData.data[idx] =
-                        binData.data[idx + 1] =
-                        binData.data[idx + 2] = v;
-
+                        binData.data[idx] = binData.data[idx + 1] = binData.data[idx + 2] = v;
                         binData.data[idx + 3] = 255;
                     }
                 }
-                const darkRatio = darkCount / (CS * CS);
-                if (darkRatio > 0.5) {
+                const darkRatio = darkCount / ((CS - 16) * (CS - 16));
+                if (darkRatio > 0.55) {
                     for (let i = 0; i < binData.data.length; i += 4) {
                         const inv = 255 - binData.data[i];
                         binData.data[i] = binData.data[i + 1] = binData.data[i + 2] = inv;
@@ -697,29 +748,42 @@ btnCropConfirm.addEventListener('click', async () => {
                 }
                 bCtx.putImageData(binData, 0, 0);
 
-                // Always classify each cell after removing the grid border.
+                let finalDarkCount = 0;
+                for (let i = 0; i < binData.data.length; i += 4) {
+                    if (binData.data[i] === 0) finalDarkCount++;
+                }
+                const inkCoverage = finalDarkCount / ((CS - 16) * (CS - 16));
+
                 const scaled = document.createElement('canvas');
                 scaled.width = 80; scaled.height = 80;
                 const sCtx = scaled.getContext('2d');
                 sCtx.fillStyle = '#ffffff';
                 sCtx.fillRect(0, 0, 80, 80);
-                sCtx.drawImage(binCanvas, 10, 10, 30, 30, 0, 0, 80, 80);
-                const img = sCtx.getImageData(0, 0, 80, 80);
-                const d = img.data;
+                sCtx.drawImage(binCanvas, 8, 8, 34, 34, 0, 0, 80, 80);
 
-                for (let i = 0; i < d.length; i += 4) {
-                    const v = d[i];
-
-                    const sharp = v < 180 ? 0 : 255;
-
-                    d[i] =
-                    d[i + 1] =
-                    d[i + 2] = sharp;
+                if (inkCoverage < 0.03) {
+                    // Skip cells with no visible digit ink after binarization.
+                    progressBar.style.width = `${Math.round(((r * 9 + c + 1) / 81) * 100)}%`;
+                    loaderSubtitle.textContent = `Scanned ${r * 9 + c + 1}/81 cells — ${found} digits found`;
+                    continue;
                 }
 
-                sCtx.putImageData(img, 0, 0);
+                const resultA = DigitClassifier.classifyWithScore(scaled);
+                const inverted = document.createElement('canvas');
+                inverted.width = 80; inverted.height = 80;
+                const iCtx = inverted.getContext('2d');
+                const imgDataScaled = sCtx.getImageData(0, 0, 80, 80);
+                for (let i = 0; i < imgDataScaled.data.length; i += 4) {
+                    const inv = 255 - imgDataScaled.data[i];
+                    imgDataScaled.data[i] = imgDataScaled.data[i + 1] = imgDataScaled.data[i + 2] = inv;
+                    imgDataScaled.data[i + 3] = 255;
+                }
+                iCtx.putImageData(imgDataScaled, 0, 0);
+                const resultB = DigitClassifier.classifyWithScore(inverted);
 
-                const digit = DigitClassifier.classify(scaled);
+                const isBlankCell = resultA.avgInk < 0.03;
+                const result = isBlankCell ? resultA : (resultA.distance <= resultB.distance ? resultA : resultB);
+                const digit = !isBlankCell && result.avgInk >= 0.03 && result.distance <= 1.2 ? result.digit : null;
                 if (digit) {
                     currentBoard[r][c] = digit;
                     const cellEl = getCellElement(r, c);
