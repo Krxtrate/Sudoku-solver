@@ -614,7 +614,14 @@ btnCropConfirm.addEventListener('click', async () => {
         const imgData = ctx.getImageData(0, 0, 450, 450);
         const px = imgData.data;
         for (let i = 0; i < px.length; i += 4) {
-            const gray = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+            const r = px[i];
+            const g = px[i + 1];
+            const b = px[i + 2];
+
+            const gray =
+                0.2126 * r +
+                0.7152 * g +
+                0.0722 * b;
             px[i] = px[i + 1] = px[i + 2] = gray;
             px[i + 3] = 255;
         }
@@ -641,7 +648,7 @@ btnCropConfirm.addEventListener('click', async () => {
                     sum += cellData.data[i];
                 }
                 const mean = sum / (CS * CS);
-                const threshold = Math.max(30, Math.min(220, mean * 0.92));
+                const threshold = Math.max(20, Math.min(235, mean * 0.88));
 
                 const binCanvas = document.createElement('canvas');
                 binCanvas.width = CS; binCanvas.height = CS;
