@@ -671,8 +671,8 @@ btnCropConfirm.addEventListener('click', async () => {
 
                         // ignore borders/gridlines
                         if (
-                            x < 5 || x > CS - 6 ||
-                            y < 5 || y > CS - 6
+                            x < 10 || x > CS - 11 ||
+                            y < 10 || y > CS - 11
                         ) {
                             v = 255;
                         }
@@ -702,7 +702,7 @@ btnCropConfirm.addEventListener('click', async () => {
                 const sCtx = scaled.getContext('2d');
                 sCtx.fillStyle = '#ffffff';
                 sCtx.fillRect(0, 0, 80, 80);
-                sCtx.drawImage(binCanvas, 10, 10, 30, 30, 0, 0, 80, 80);
+                sCtx.drawImage(binCanvas, 12, 12, 26, 26, 0, 0, 80, 80);
                 const img = sCtx.getImageData(0, 0, 80, 80);
                 const d = img.data;
 
