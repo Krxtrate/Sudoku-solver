@@ -69,7 +69,8 @@ header {
 .logo-icon {
     width: 2.2rem;
     height: 2.2rem;
-    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)
+    );
     border-radius: 8px;
     display: flex;
     align-items: center;
