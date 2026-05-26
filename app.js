@@ -565,7 +565,7 @@ const DigitClassifier = (function () {
         const fv = featureVec(norm);
         // Reject clearly empty cells
         const avgInk = fv.reduce((s, v) => s + v, 0) / fv.length;
-        if (avgInk < 0.01) return null;
+        if (avgInk < 0.03) return null;
         let best = null, bestDist = Infinity;
         for (let d = 1; d <= 9; d++) {
             let dist = 0;
@@ -658,9 +658,20 @@ btnCropConfirm.addEventListener('click', async () => {
 
                 for (let i = 0; i < cellData.data.length; i += 4) {
                     const lum = cellData.data[i];
-                    let v = lum < threshold ? 0 : 255;
+                    let v;
+
+                    if (lum < threshold * 0.75) {
+                        v = 0;
+                    } else {
+                        v = 255;
+                    }
+
                     if (v === 0) darkCount++;
-                    binData.data[i] = binData.data[i + 1] = binData.data[i + 2] = v;
+
+                    binData.data[i] =
+                    binData.data[i + 1] =
+                    binData.data[i + 2] = v;
+
                     binData.data[i + 3] = 255;
                 }
 
@@ -680,7 +691,7 @@ btnCropConfirm.addEventListener('click', async () => {
                 const sCtx = scaled.getContext('2d');
                 sCtx.fillStyle = '#ffffff';
                 sCtx.fillRect(0, 0, 80, 80);
-                sCtx.drawImage(binCanvas, 6, 6, 38, 38, 0, 0, 80, 80);
+                sCtx.drawImage(binCanvas, 10, 10, 30, 30, 0, 0, 80, 80);
 
                 const digit = DigitClassifier.classify(scaled);
                 if (digit) {
