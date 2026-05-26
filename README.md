@@ -1,10 +1,9 @@
 # 🧩 Sudoku OCR Solver
 
-A futuristic, high-performance Sudoku Solver built with pure JavaScript, featuring:
+A high-performance Sudoku Solver built with pure JavaScript, featuring:
 
 - 📸 Screenshot-to-board OCR extraction
 - ⚡ Instant backtracking solver
-- 🎨 Cyberpunk glassmorphism UI
 - 🧠 Client-side digit recognition engine
 - 📱 Mobile-friendly controls
 - 🔍 Real-time board validation
@@ -40,10 +39,7 @@ Features:
 
 ---
 
-### 🎨 Futuristic UI
-Designed with a cyberpunk-inspired interface:
-- Glassmorphism panels
-- Neon accents
+### 🎨 UI
 - Responsive layout
 - Animated interactions
 - Mobile keypad support
