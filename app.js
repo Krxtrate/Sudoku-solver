@@ -695,6 +695,20 @@ btnCropConfirm.addEventListener('click', async () => {
                 sCtx.fillStyle = '#ffffff';
                 sCtx.fillRect(0, 0, 80, 80);
                 sCtx.drawImage(binCanvas, 10, 10, 30, 30, 0, 0, 80, 80);
+                const img = sCtx.getImageData(0, 0, 80, 80);
+                const d = img.data;
+
+                for (let i = 0; i < d.length; i += 4) {
+                    const v = d[i];
+
+                    const sharp = v < 180 ? 0 : 255;
+
+                    d[i] =
+                    d[i + 1] =
+                    d[i + 2] = sharp;
+                }
+
+                sCtx.putImageData(img, 0, 0);
 
                 const digit = DigitClassifier.classify(scaled);
                 if (digit) {
