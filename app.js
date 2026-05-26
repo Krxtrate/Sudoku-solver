@@ -676,6 +676,9 @@ btnCropConfirm.addEventListener('click', async () => {
                 }
 
                 const darkRatio = darkCount / (CS * CS);
+                if (darkRatio > 0.35) {
+                    continue;
+                }      
                 if (darkRatio > 0.5) {
                     for (let i = 0; i < binData.data.length; i += 4) {
                         const inv = 255 - binData.data[i];
