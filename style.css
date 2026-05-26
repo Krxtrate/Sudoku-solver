@@ -1,28 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --bg-primary: #06070a;
-    --bg-secondary: #0a0c12;
-    --glass-bg: rgba(13, 17, 28, 0.65);
-    --glass-border: rgba(255, 255, 255, 0.06);
-    --glass-shadow: rgba(0, 0, 0, 0.5);
-    
-    --accent-cyan: #00f2fe;
-    --accent-blue: #4facfe;
-    --accent-purple: #7f00ff;
-    --accent-pink: #ff007f;
-    --accent-green: #00ff87;
-    
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #475569;
-    
-    --cell-border: rgba(255, 255, 255, 0.04);
-    --block-border: rgba(79, 172, 254, 0.3);
-    
-    --font-sans: 'Inter', sans-serif;
-    --font-mono: 'Orbitron', monospace;
-    
+    --bg-primary: #f4ecd8;
+    --bg-secondary: #dbc7a3;
+
+    --glass-bg: rgba(245, 235, 220, 0.08);
+    --glass-border: rgba(222, 184, 135, 0.12);
+    --glass-shadow: rgba(0, 0, 0, 0.45);
+
+    --accent-cyan: #d2b48c;
+    --accent-blue: #c2a878;
+    --accent-purple: #8b6f47;
+    --accent-pink: #9c6644;
+    --accent-green: #b08968;
+
+    --text-primary: #f5e6d3;
+    --text-secondary: #d6c2a8;
+    --text-muted: #9f8b73;
+
+    --cell-border: rgba(245, 230, 211, 0.06);
+    --block-border: rgba(210, 180, 140, 0.25);
+
+    --font-sans: 'Times New Roman', serif;
+    --font-mono: 'Times New Roman', serif;
+
     --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
