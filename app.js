@@ -244,8 +244,8 @@ function validateBoard() {
     
     return !hasConflict;
 }
-
-// Reset/Clear everything
+ī
+// Reset/Clear everythingī
 function clearGrid() {
     currentBoard = Array(9).fill(null).map(() => Array(9).fill('.'));
     activeCell = null;

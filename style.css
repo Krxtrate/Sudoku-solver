@@ -159,8 +159,9 @@ header {
     display: grid;
     grid-template-columns: repeat(9, 1fr);
     grid-template-rows: repeat(9, 1fr);
-    width: 500px;
-    height: 500px;
+    width: min(90vw, 500px);
+    aspect-ratio: 1 / 1;
+    height: auto;
     border: 3px solid var(--text-primary);
     border-radius: 8px;
     overflow: hidden;
@@ -443,7 +444,7 @@ header {
     display: grid;
     grid-template-columns: repeat(9, 1fr);
     gap: 0.5rem;
-    width: 500px;
+    width: min(90vw, 500px);
     margin-top: 1.25rem;
 }
 
@@ -751,5 +752,50 @@ footer a:hover {
     .key {
         padding: 0.5rem 0;
         font-size: 1rem;
+    }
+}
+
+html, body {
+    overflow-x: hidden;
+    touch-action: manipulation;
+}
+
+input,
+button {
+    font-size: 16px;
+}
+
+@media (max-width: 576px) {
+
+    .dashboard-container {
+        padding: 0 0.5rem;
+    }
+
+    .glass-panel {
+        padding: 1rem;
+    }
+
+    .cell input {
+        font-size: 1.1rem;
+    }
+
+    .modal-content {
+        max-height: 95vh;
+    }
+
+    .crop-workspace img {
+        max-height: 45vh;
+    }
+
+    .loader-content {
+        padding: 2rem 1rem;
+    }
+
+    .btn-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-full {
+        grid-column: span 1;
     }
 }
