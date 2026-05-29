@@ -597,32 +597,21 @@ async function processGridImage() {
         // ── STEP 2: Threshold to find grid outline using Canny Edge Detection ──
         let blurred = new cv.Mat();
         cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
-        cv.equalizeHist(gray, gray);
         
         let edges = new cv.Mat();
-        cv.Canny(blurred, edges, 40, 120, 3, false);
+        // Canny perfectly isolates the board outline even if the outer background is darker than the board
+        cv.Canny(blurred, edges, 50, 150, 3, false);
         blurred.delete();
 
         // Close gaps in edges so the grid forms a single solid contour
         let kernelEdge = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
         cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernelEdge);
+        kernelEdge.delete();
 
         let contours = new cv.MatVector();
         let hierarchy = new cv.Mat();
         cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-        // Fallback: if Canny fails to produce a usable contour, use adaptive thresholding
-        if (contours.size() === 0) {
-            let fallback = new cv.Mat();
-            cv.adaptiveThreshold(gray, fallback, 255,
-                cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 31, 10);
-            cv.morphologyEx(fallback, fallback, cv.MORPH_CLOSE, kernelEdge);
-            cv.findContours(fallback, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-            fallback.delete();
-        }
-
         edges.delete();
-        kernelEdge.delete();
 
         // ── STEP 3: Find the largest contour (the grid) ─────────
         let bestArea = 0, bestIdx = -1;
