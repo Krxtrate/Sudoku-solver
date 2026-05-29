@@ -17,14 +17,6 @@ const uploadZone = document.getElementById('upload-zone');
 const fileInput = document.getElementById('file-input');
 const btnBrowse = document.getElementById('btn-browse');
 
-// Crop Modal Elements
-const cropModal = document.getElementById('crop-modal');
-const sourceImage = document.getElementById('source-image');
-const cropWorkspace = document.getElementById('crop-workspace');
-const cropBox = document.getElementById('crop-box');
-const btnCropCancel = document.getElementById('btn-crop-cancel');
-const btnCropConfirm = document.getElementById('btn-crop-confirm');
-
 // Loader Elements
 const loaderModal = document.getElementById('loader-modal');
 const loaderTitle = document.getElementById('loader-title');
@@ -33,12 +25,8 @@ const progressBar = document.getElementById('progress-bar');
 const loaderSpinner = document.getElementById('loader-spinner');
 const btnLoaderClose = document.getElementById('btn-loader-close');
 
-// Crop Drag/Resize State variables
-let isDragging = false;
-let activeHandle = null;
-let startX = 0, startY = 0;
-let boxLeft = 0, boxTop = 0, boxWidth = 0, boxHeight = 0;
-let workspaceRect = null;
+// Hidden image element for OpenCV to read from
+const sourceImage = new Image();
 
 // Initialize the board grid UI
 function initBoardGrid() {
@@ -301,6 +289,21 @@ uploadZone.addEventListener('drop', (e) => {
     }
 });
 
+// Clipboard paste support (Ctrl+V anywhere on the page)
+document.addEventListener('paste', (e) => {
+    const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+    if (!items) return;
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            const file = item.getAsFile();
+            if (file) processUploadedImage(file);
+            break;
+        }
+    }
+});
+
+
 // Process image file
 function processUploadedImage(file) {
     if (!file.type.startsWith('image/')) {
@@ -308,10 +311,15 @@ function processUploadedImage(file) {
         return;
     }
     
+    if (!window.cvLoaded) {
+        alert("Please wait a moment for the Vision Engine to load...");
+        return;
+    }
+    
     const reader = new FileReader();
     reader.onload = (e) => {
         sourceImage.onload = () => {
-            openCropModal();
+            processGridImage(); // Trigger auto-detection
         };
         sourceImage.onerror = () => {
             alert("Unable to load the selected image. Please try a different file.");
@@ -321,143 +329,7 @@ function processUploadedImage(file) {
     reader.readAsDataURL(file);
 }
 
-// -------------------------------------------------------------
-// DRAGGABLE RESIZABLE CROP OVERLAY
-// -------------------------------------------------------------
-function openCropModal() {
-    cropModal.classList.add('show');
-    
-    // Fit alignment box to the full visible image area, leaving only a small margin.
-    const imgWidth = sourceImage.clientWidth;
-    const imgHeight = sourceImage.clientHeight;
-    const margin = 8;
-    const side = Math.max(0, Math.min(imgWidth, imgHeight) - margin * 2);
-    boxWidth = side;
-    boxHeight = side;
-    boxLeft = Math.max(0, (imgWidth - side) / 2);
-    boxTop = Math.max(0, (imgHeight - side) / 2);
-    
-    updateCropBoxUI();
-}
-
-function closeCropModal() {
-    cropModal.classList.remove('show');
-    fileInput.value = ''; // Reset file input
-}
-
-function updateCropBoxUI() {
-    cropBox.style.left = `${boxLeft}px`;
-    cropBox.style.top = `${boxTop}px`;
-    cropBox.style.width = `${boxWidth}px`;
-    cropBox.style.height = `${boxHeight}px`;
-}
-
-// Mouse/Touch Drag Handlers
-cropBox.addEventListener('mousedown', startDrag);
-cropBox.addEventListener('touchstart', startDrag, { passive: false });
-
-function startDrag(e) {
-    e.preventDefault();
-    workspaceRect = sourceImage.getBoundingClientRect();
-    
-    // Check if clicked a handle or the box body
-    const handleElement = e.target.closest('.handle');
-    if (handleElement) {
-        activeHandle = handleElement.dataset.handle;
-    } else {
-        isDragging = true;
-    }
-    
-    const clientX = e.clientX || e.touches[0].clientX;
-    const clientY = e.clientY || e.touches[0].clientY;
-    
-    startX = clientX;
-    startY = clientY;
-    
-    document.addEventListener('mousemove', dragMove);
-    document.addEventListener('mouseup', endDrag);
-    document.addEventListener('touchmove', dragMove, { passive: false });
-    document.addEventListener('touchend', endDrag);
-}
-
-function dragMove(e) {
-    if (!isDragging && !activeHandle) return;
-    e.preventDefault();
-    
-    const clientX = e.clientX || e.touches[0].clientX;
-    const clientY = e.clientY || e.touches[0].clientY;
-    
-    const deltaX = clientX - startX;
-    const deltaY = clientY - startY;
-    
-    const imgWidth = sourceImage.clientWidth;
-    const imgHeight = sourceImage.clientHeight;
-    const minSize = 60; // minimum grid width size
-    
-    if (isDragging) {
-        // Translate entire crop box
-        let nextLeft = boxLeft + deltaX;
-        let nextTop = boxTop + deltaY;
-        
-        // Bounds constraint
-        nextLeft = Math.max(0, Math.min(imgWidth - boxWidth, nextLeft));
-        nextTop = Math.max(0, Math.min(imgHeight - boxHeight, nextTop));
-        
-        boxLeft = nextLeft;
-        boxTop = nextTop;
-    } else if (activeHandle) {
-        // Resize box via drag handles
-        let nextLeft = boxLeft;
-        let nextTop = boxTop;
-        let nextWidth = boxWidth;
-        let nextHeight = boxHeight;
-        
-        switch (activeHandle) {
-            case 'nw':
-                nextLeft = Math.max(0, Math.min(boxLeft + boxWidth - minSize, boxLeft + deltaX));
-                nextTop = Math.max(0, Math.min(boxTop + boxHeight - minSize, boxTop + deltaY));
-                nextWidth = boxWidth + (boxLeft - nextLeft);
-                nextHeight = boxHeight + (boxTop - nextTop);
-                break;
-            case 'ne':
-                nextTop = Math.max(0, Math.min(boxTop + boxHeight - minSize, boxTop + deltaY));
-                nextWidth = Math.max(minSize, Math.min(imgWidth - boxLeft, boxWidth + deltaX));
-                nextHeight = boxHeight + (boxTop - nextTop);
-                break;
-            case 'sw':
-                nextLeft = Math.max(0, Math.min(boxLeft + boxWidth - minSize, boxLeft + deltaX));
-                nextWidth = boxWidth + (boxLeft - nextLeft);
-                nextHeight = Math.max(minSize, Math.min(imgHeight - boxTop, boxHeight + deltaY));
-                break;
-            case 'se':
-                nextWidth = Math.max(minSize, Math.min(imgWidth - boxLeft, boxWidth + deltaX));
-                nextHeight = Math.max(minSize, Math.min(imgHeight - boxTop, boxHeight + deltaY));
-                break;
-        }
-        
-        boxLeft = nextLeft;
-        boxTop = nextTop;
-        boxWidth = nextWidth;
-        boxHeight = nextHeight;
-    }
-    
-    startX = clientX;
-    startY = clientY;
-    
-    updateCropBoxUI();
-}
-
-function endDrag() {
-    isDragging = false;
-    activeHandle = null;
-    
-    document.removeEventListener('mousemove', dragMove);
-    document.removeEventListener('mouseup', endDrag);
-    document.removeEventListener('touchmove', dragMove);
-    document.removeEventListener('touchend', endDrag);
-}
-
-btnCropCancel.addEventListener('click', closeCropModal);
+// --- DRAG AND CROP LOGIC REMOVED: Auto-detecting grid with OpenCV ---
 
 // -------------------------------------------------------------
 // PURE-JS DIGIT CLASSIFIER  (zero external dependencies)
@@ -620,189 +492,255 @@ const DigitClassifier = (function () {
 })();
 
 // -------------------------------------------------------------
-// GRID SCAN ENGINE  (uses DigitClassifier, no Tesseract)
+// GRID SCAN ENGINE (Auto-Detect with OpenCV + DigitClassifier)
 // -------------------------------------------------------------
-btnCropConfirm.addEventListener('click', async () => {
-    // Show loading overlay immediately, but keep the crop modal visible until we capture the image.
+async function processGridImage() {
     loaderModal.classList.add('show');
-    loaderTitle.textContent = "SCANNING GRID";
-    loaderSubtitle.textContent = "Preparing image...";
+    loaderTitle.textContent = "VISION ENGINE DETECTING GRID";
+    loaderSubtitle.textContent = "Scanning image for Sudoku board...";
     progressBar.style.width = "0%";
     loaderSpinner.style.display = 'block';
     btnLoaderClose.style.display = 'none';
     progressBar.style.background = "linear-gradient(90deg, var(--accent-cyan), var(--accent-blue))";
-
-    // Yield so the browser can repaint before heavy canvas work
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise(r => setTimeout(r, 100));
 
     try {
-        // ── 1. Draw cropped region onto 450×450 canvas ──────────────
-        const cropCanvas = document.createElement('canvas');
-        cropCanvas.width = 450; cropCanvas.height = 450;
-        const ctx = cropCanvas.getContext('2d');
+        // ── STEP 1: Load image and convert to grayscale ──────────
+        let src = cv.imread(sourceImage);
+        let gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
 
-        const scaleX = sourceImage.naturalWidth / sourceImage.clientWidth;
-        const scaleY = sourceImage.naturalHeight / sourceImage.clientHeight;
-        ctx.drawImage(sourceImage,
-            boxLeft * scaleX, boxTop * scaleY,
-            boxWidth * scaleX, boxHeight * scaleY,
-            0, 0, 450, 450);
+        // ── STEP 2: Threshold to find grid outline using Canny Edge Detection ──
+        let blurred = new cv.Mat();
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+        
+        let edges = new cv.Mat();
+        // Canny perfectly isolates the board outline even if the outer background is darker than the board
+        cv.Canny(blurred, edges, 50, 150, 3, false);
+        blurred.delete();
 
-        closeCropModal();
+        // Close gaps in edges so the grid forms a single solid contour
+        let kernelEdge = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+        cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernelEdge);
+        kernelEdge.delete();
 
-        // ── 2. Convert the crop to grayscale so each cell can be binarized adaptively.
-        const imgData = ctx.getImageData(0, 0, 450, 450);
-        const px = imgData.data;
-        for (let i = 0; i < px.length; i += 4) {
-            const r = px[i];
-            const g = px[i + 1];
-            const b = px[i + 2];
+        let contours = new cv.MatVector();
+        let hierarchy = new cv.Mat();
+        cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+        edges.delete();
 
-            const gray =
-                0.2126 * r +
-                0.7152 * g +
-                0.0722 * b;
-            px[i] = px[i + 1] = px[i + 2] = gray;
-            px[i + 3] = 255;
+        // ── STEP 3: Find the largest contour (the grid) ─────────
+        let bestArea = 0, bestIdx = -1;
+        let imgArea = src.cols * src.rows;
+        
+        for (let i = 0; i < contours.size(); i++) {
+            let a = cv.contourArea(contours.get(i));
+            // Require contour to be < 98% of image to avoid selecting the image boundary itself
+            if (a > bestArea && a < imgArea * 0.98) { 
+                bestArea = a; 
+                bestIdx = i; 
+            }
         }
-        ctx.putImageData(imgData, 0, 0);
+        
+        if (bestIdx === -1 || bestArea < 5000) {
+            throw new Error("No Sudoku grid found. Please ensure the full board is visible.");
+        }
 
+        // ── STEP 4: Get grid corners (quad or bounding rect) ──────
+        let bestCnt = contours.get(bestIdx);
+        let bbox = cv.boundingRect(bestCnt);
+        let bboxArea = bbox.width * bbox.height;
+        let isScreenshot = (bestArea / bboxArea) > 0.85;
+
+        let tl, tr, bl, br;
+        
+        // If it's a screenshot (upright rectangle), bypass skew logic to prevent cell drift
+        if (isScreenshot) {
+            let p = 2; // slight inset to avoid thick outer border
+            tl = { x: bbox.x + p,              y: bbox.y + p };
+            tr = { x: bbox.x + bbox.width - p, y: bbox.y + p };
+            bl = { x: bbox.x + p,              y: bbox.y + bbox.height - p };
+            br = { x: bbox.x + bbox.width - p, y: bbox.y + bbox.height - p };
+        } else {
+            let perim = cv.arcLength(bestCnt, true);
+            let approx = new cv.Mat();
+            let foundQuad = false;
+            for (let eps of [0.02, 0.03, 0.05, 0.07, 0.10]) {
+                approx.delete();
+                approx = new cv.Mat();
+                cv.approxPolyDP(bestCnt, approx, eps * perim, true);
+                if (approx.rows === 4) { foundQuad = true; break; }
+            }
+
+            if (foundQuad) {
+                let pts = [];
+                for (let i = 0; i < 4; i++)
+                    pts.push({ x: approx.data32S[i * 2], y: approx.data32S[i * 2 + 1] });
+                pts.sort((a, b) => (a.x + a.y) - (b.x + b.y));
+                tl = pts[0]; br = pts[3];
+                let mid = [pts[1], pts[2]].sort((a, b) => (a.x - a.y) - (b.x - b.y));
+                bl = mid[0]; tr = mid[1];
+            } else {
+                let p = 2;
+                tl = { x: bbox.x + p,              y: bbox.y + p };
+                tr = { x: bbox.x + bbox.width - p, y: bbox.y + p };
+                bl = { x: bbox.x + p,              y: bbox.y + bbox.height - p };
+                br = { x: bbox.x + bbox.width - p, y: bbox.y + bbox.height - p };
+            }
+            approx.delete();
+        }
+        contours.delete();
+        hierarchy.delete();
+
+        // ── STEP 5: Perspective-warp grid to 450×450 ──────────────
+        const SIDE = 450;
+        let srcPts = cv.matFromArray(4, 1, cv.CV_32FC2,
+            [tl.x, tl.y, tr.x, tr.y, bl.x, bl.y, br.x, br.y]);
+        let dstPts = cv.matFromArray(4, 1, cv.CV_32FC2,
+            [0, 0, SIDE, 0, 0, SIDE, SIDE, SIDE]);
+        let M = cv.getPerspectiveTransform(srcPts, dstPts);
+        let warped = new cv.Mat();
+        cv.warpPerspective(src, warped, M, new cv.Size(SIDE, SIDE),
+            cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
+        src.delete(); srcPts.delete(); dstPts.delete(); M.delete();
+
+        // ── STEP 6: Global threshold + morphological closing ──────
+        let warpGray = new cv.Mat();
+        cv.cvtColor(warped, warpGray, cv.COLOR_RGBA2GRAY, 0);
+        warped.delete();
+
+        let warpThresh = new cv.Mat();
+        cv.adaptiveThreshold(warpGray, warpThresh, 255,
+            cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 41, 15);
+        warpGray.delete();
+
+        let kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2));
+        let closed = new cv.Mat();
+        cv.morphologyEx(warpThresh, closed, cv.MORPH_CLOSE, kernel);
+        kernel.delete(); warpThresh.delete();
+
+        // ── STEP 7: Extract digits cell by cell ───────────────────
+        const CS = Math.floor(SIDE / 9); // 50
+        const GUARD = 6; // guard to avoid thick grid lines
         clearGrid();
         loaderTitle.textContent = "DECODING DIGITS";
         let found = 0;
 
-        // ── 3. Process each of the 81 cells ─────────────────────────
-        for (let r = 0; r < 9; r++) {
-            for (let c = 0; c < 9; c++) {
-                const CS = 50; // cell size in the 450px canvas
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                let cx = col * CS + GUARD;
+                let cy = row * CS + GUARD;
+                let cw = Math.min(CS - 2 * GUARD, SIDE - cx);
+                let ch = Math.min(CS - 2 * GUARD, SIDE - cy);
+                if (cw <= 0 || ch <= 0) continue;
 
-                // Extract cell
-                const cellCanvas = document.createElement('canvas');
-                cellCanvas.width = CS; cellCanvas.height = CS;
-                const cCtx = cellCanvas.getContext('2d');
-                cCtx.drawImage(cropCanvas, c * CS, r * CS, CS, CS, 0, 0, CS, CS);
+                let cellGray = warpGray.roi(new cv.Rect(cx, cy, cw, ch));
+                let cellThresh = new cv.Mat();
+                cv.adaptiveThreshold(cellGray, cellThresh, 255,
+                    cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 10);
+                cellGray.delete();
 
-                const cellData = cCtx.getImageData(0, 0, CS, CS);
-                const grayValues = [];
-                for (let y = 5; y < CS - 5; y++) {
-                    for (let x = 5; x < CS - 5; x++) {
-                        const idx = (y * CS + x) * 4;
-                        grayValues.push(cellData.data[idx]);
-                    }
-                }
+                let kernelCell = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2));
+                let cellMat = new cv.Mat();
+                cv.morphologyEx(cellThresh, cellMat, cv.MORPH_OPEN, kernelCell);
+                cv.morphologyEx(cellMat, cellMat, cv.MORPH_CLOSE, kernelCell);
+                kernelCell.delete();
+                cellThresh.delete();
 
-                const threshold = (() => {
-                    const hist = new Array(256).fill(0);
-                    grayValues.forEach(v => hist[Math.min(255, Math.max(0, Math.round(v)))]++);
-                    const total = grayValues.length;
-                    let sum = 0;
-                    for (let i = 0; i < 256; i++) sum += i * hist[i];
-                    let sumB = 0;
-                    let wB = 0;
-                    let maxVar = 0;
-                    let thresh = 127;
-                    for (let i = 0; i < 256; i++) {
-                        wB += hist[i];
-                        if (wB === 0) continue;
-                        const wF = total - wB;
-                        if (wF === 0) break;
-                        sumB += i * hist[i];
-                        const mB = sumB / wB;
-                        const mF = (sum - sumB) / wF;
-                        const varBetween = wB * wF * (mB - mF) * (mB - mF);
-                        if (varBetween > maxVar) {
-                            maxVar = varBetween;
-                            thresh = i;
-                        }
-                    }
-                    return thresh;
-                })();
+                let inkCount = cv.countNonZero(cellMat);
 
-                const binCanvas = document.createElement('canvas');
-                binCanvas.width = CS;
-                binCanvas.height = CS;
-                const bCtx = binCanvas.getContext('2d');
-                const binData = bCtx.createImageData(CS, CS);
-                let darkCount = 0;
-
-                for (let y = 0; y < CS; y++) {
-                    for (let x = 0; x < CS; x++) {
-                        const idx = (y * CS + x) * 4;
-                        const lum = cellData.data[idx];
-                        let v = lum < threshold ? 0 : 255;
-                        if (x < 8 || x > CS - 9 || y < 8 || y > CS - 9) {
-                            v = 255;
-                        }
-                        if (v === 0) darkCount++;
-                        binData.data[idx] = binData.data[idx + 1] = binData.data[idx + 2] = v;
-                        binData.data[idx + 3] = 255;
-                    }
-                }
-                const darkRatio = darkCount / ((CS - 16) * (CS - 16));
-                if (darkRatio > 0.55) {
-                    for (let i = 0; i < binData.data.length; i += 4) {
-                        const inv = 255 - binData.data[i];
-                        binData.data[i] = binData.data[i + 1] = binData.data[i + 2] = inv;
-                        binData.data[i + 3] = 255;
-                    }
-                }
-                bCtx.putImageData(binData, 0, 0);
-
-                let finalDarkCount = 0;
-                for (let i = 0; i < binData.data.length; i += 4) {
-                    if (binData.data[i] === 0) finalDarkCount++;
-                }
-                const inkCoverage = finalDarkCount / ((CS - 16) * (CS - 16));
-
-                const scaled = document.createElement('canvas');
-                scaled.width = 80; scaled.height = 80;
-                const sCtx = scaled.getContext('2d');
-                sCtx.fillStyle = '#ffffff';
-                sCtx.fillRect(0, 0, 80, 80);
-                sCtx.drawImage(binCanvas, 8, 8, 34, 34, 0, 0, 80, 80);
-
-                if (inkCoverage < 0.03) {
-                    // Skip cells with no visible digit ink after binarization.
-                    progressBar.style.width = `${Math.round(((r * 9 + c + 1) / 81) * 100)}%`;
-                    loaderSubtitle.textContent = `Scanned ${r * 9 + c + 1}/81 cells — ${found} digits found`;
+                if (inkCount / (cw * ch) < 0.02) {
+                    cellMat.delete();
+                    progressBar.style.width = `${Math.round(((row * 9 + col + 1) / 81) * 100)}%`;
+                    loaderSubtitle.textContent = `Scanned ${row * 9 + col + 1}/81 cells — ${found} digits found`;
                     continue;
                 }
 
-                const resultA = DigitClassifier.classifyWithScore(scaled);
-                const inverted = document.createElement('canvas');
-                inverted.width = 80; inverted.height = 80;
-                const iCtx = inverted.getContext('2d');
-                const imgDataScaled = sCtx.getImageData(0, 0, 80, 80);
-                for (let i = 0; i < imgDataScaled.data.length; i += 4) {
-                    const inv = 255 - imgDataScaled.data[i];
-                    imgDataScaled.data[i] = imgDataScaled.data[i + 1] = imgDataScaled.data[i + 2] = inv;
-                    imgDataScaled.data[i + 3] = 255;
-                }
-                iCtx.putImageData(imgDataScaled, 0, 0);
-                const resultB = DigitClassifier.classifyWithScore(inverted);
+                // Find the largest contour in the cell = the digit
+                let cc = new cv.MatVector();
+                let ch2 = new cv.Mat();
+                cv.findContours(cellMat, cc, ch2, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-                const isBlankCell = resultA.avgInk < 0.03;
-                const result = isBlankCell ? resultA : (resultA.distance <= resultB.distance ? resultA : resultB);
-                const digit = !isBlankCell && result.avgInk >= 0.03 && result.distance <= 1.2 ? result.digit : null;
-                if (digit) {
-                    currentBoard[r][c] = digit;
-                    const cellEl = getCellElement(r, c);
-                    const inp = getCellInput(r, c);
-                    inp.value = digit;
-                    cellEl.classList.add('preset-value');
-                    inp.disabled = true;
-                    found++;
+                let maxA = 0, maxI = -1;
+                for (let i = 0; i < cc.size(); i++) {
+                    let a = cv.contourArea(cc.get(i));
+                    if (a > maxA) { maxA = a; maxI = i; }
                 }
 
-                // Update progress bar
-                const pct = Math.round(((r * 9 + c + 1) / 81) * 100);
-                progressBar.style.width = `${pct}%`;
-                loaderSubtitle.textContent = `Scanned ${r * 9 + c + 1}/81 cells — ${found} digits found`;
+                // Prepare 28×28 white canvas for the classifier
+                let digitCanvas = document.createElement('canvas');
+                digitCanvas.width = 28; digitCanvas.height = 28;
+                let dCtx = digitCanvas.getContext('2d');
+                dCtx.fillStyle = '#fff';
+                dCtx.fillRect(0, 0, 28, 28);
+                let hasDigit = false;
+
+                if (maxI !== -1 && maxA > 25) {
+                    let bbox = cv.boundingRect(cc.get(maxI));
+                    let aspect = bbox.width / Math.max(bbox.height, 1);
+                    let hRatio  = bbox.height / ch;
+
+                    // Stricter check for real digits vs noise
+                    // NYT digits are tall, aspect ratio < 1.5, height >= 35%
+                    // Reject small pencil marks (hRatio < 35%) and wide noise (aspect > 1.5)
+                    if (aspect >= 0.15 && aspect <= 1.5 && hRatio >= 0.35 && hRatio <= 0.95) {
+                        hasDigit = true;
+
+                        // Render bbox into a temp canvas
+                        let roiMat = cellMat.roi(bbox);
+                        let tmpC = document.createElement('canvas');
+                        tmpC.width = bbox.width; tmpC.height = bbox.height;
+                        cv.imshow(tmpC, roiMat);
+                        roiMat.delete();
+
+                        // Scale to fit 22×22, center in 28×28, invert (ink→black, bg→white)
+                        let scale = Math.min(22 / bbox.width, 22 / bbox.height);
+                        let dw = Math.max(1, Math.round(bbox.width * scale));
+                        let dh = Math.max(1, Math.round(bbox.height * scale));
+                        let ox = Math.round((28 - dw) / 2);
+                        let oy = Math.round((28 - dh) / 2);
+
+                        let rawData = tmpC.getContext('2d').getImageData(0, 0, bbox.width, bbox.height);
+                        let outData = dCtx.getImageData(0, 0, 28, 28);
+                        for (let dy = 0; dy < dh; dy++) {
+                            for (let dx = 0; dx < dw; dx++) {
+                                let sy = Math.min(Math.round(dy / scale), bbox.height - 1);
+                                let sx = Math.min(Math.round(dx / scale), bbox.width - 1);
+                                // THRESH_BINARY_INV: white pixel = ink. Invert to get black ink.
+                                let ink = rawData.data[(sy * bbox.width + sx) * 4] > 128 ? 0 : 255;
+                                let pi = ((oy + dy) * 28 + (ox + dx)) * 4;
+                                outData.data[pi] = ink;
+                                outData.data[pi + 1] = ink;
+                                outData.data[pi + 2] = ink;
+                                outData.data[pi + 3] = 255;
+                            }
+                        }
+                        dCtx.putImageData(outData, 0, 0);
+                    }
+                }
+
+                cellMat.delete(); cc.delete(); ch2.delete();
+
+                if (hasDigit) {
+                    const result = DigitClassifier.classifyWithScore(digitCanvas);
+                    if (result.digit && result.distance <= 2.2) {
+                        currentBoard[row][col] = result.digit;
+                        const cellEl = getCellElement(row, col);
+                        const inp = getCellInput(row, col);
+                        inp.value = result.digit;
+                        cellEl.classList.add('preset-value');
+                        inp.disabled = true;
+                        found++;
+                    }
+                }
+
+                progressBar.style.width = `${Math.round(((row * 9 + col + 1) / 81) * 100)}%`;
+                loaderSubtitle.textContent = `Scanned ${row * 9 + col + 1}/81 cells — ${found} digits found`;
             }
-            // Yield once per row to keep UI responsive
             await new Promise(res => setTimeout(res, 0));
         }
 
+        closed.delete();
         validateBoard();
         loaderModal.classList.remove('show');
 
@@ -830,9 +768,10 @@ btnCropConfirm.addEventListener('click', async () => {
         loaderSpinner.style.display = 'none';
         btnLoaderClose.style.display = 'block';
     }
-});
+}
 
 // -------------------------------------------------------------
+
 // CORE HIGH-PERFORMANCE SUDOKU BACKTRACKING SOLVER ENGINE
 // -------------------------------------------------------------
 function isValid(board, r, c, val) {
