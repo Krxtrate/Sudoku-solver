@@ -1,0 +1,32 @@
+{
+  "name": "sudoku-solver",
+  "version": "1.0.0",
+  "description": "A high-performance Sudoku Solver built with pure JavaScript, featuring OCR extraction, instant solving, and client-side digit recognition",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"No tests configured\" && exit 0",
+    "dev": "npx http-server -p 8080 -o",
+    "serve": "npx http-server -p 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Krxtrate/Sudoku-solver.git"
+  },
+  "keywords": [
+    "sudoku",
+    "solver",
+    "ocr",
+    "opencv",
+    "backtracking",
+    "vanilla-javascript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Krxtrate/Sudoku-solver/issues"
+  },
+  "homepage": "https://github.com/Krxtrate/Sudoku-solver#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
